@@ -1,0 +1,13 @@
+# Local environment files; commit the example template
+.env
+.env.*
+!.env.example
+
+# Private learning and progress notes
+docs/build-notes.md
+
+# Generated OLake configuration, state, and logs
+runtime/
+
+# Local temporary files
+*.log
