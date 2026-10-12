@@ -222,7 +222,82 @@ Compare every sorted business row as well as the totals. Matching counts and sum
 
 ### Spark result screenshots
 
-Screenshots of the row query and aggregate results will be added here.
+The screenshot shows the catalog namespace, the orders table, all 15 business rows, and the aggregate result of 15 rows and 120000 cents.
+
+![Spark SQL orders and matching totals](screenshots/spark-orders.png)
+
+## 8. Change the source and sync again
+
+This step demonstrates an update and an insert after the initial 15-row sync. Keep a Spark SQL session open using the command in step 7, and open a second PowerShell terminal in the repository directory for PostgreSQL and OLake commands.
+
+### Change PostgreSQL
+
+[The change SQL](sql/02-change-orders.sql) changes Chloe's order (ID 3) from 3000 cents and `pending` to 3500 cents and `paid`, then adds Priya's order (ID 16) for 16000 cents. Run it once against the initial sample data:
+
+```powershell
+Get-Content sql/02-change-orders.sql -Raw |
+  docker compose exec -T postgres psql -U olake_demo -d orders_demo -v ON_ERROR_STOP=1
+
+docker compose exec -T postgres psql -U olake_demo -d orders_demo `
+  -c "SELECT id, customer_name, amount_cents, status FROM public.orders WHERE id IN (3, 16) ORDER BY id; SELECT COUNT(*) AS row_count, SUM(amount_cents) AS total_cents FROM public.orders;"
+```
+
+**Expected outcome:** PostgreSQL shows Chloe's updated order and Priya's new order, with **16 rows totaling 136500 cents**. The transaction applies both changes together; `ON_ERROR_STOP` stops processing if a SQL statement fails.
+
+### Show the destination before syncing
+
+In the Spark SQL session, run:
+
+```sql
+SELECT id, customer_name, amount_cents, status
+FROM demo.postgres_orders_demo_public.orders
+WHERE id IN (3, 16)
+ORDER BY id;
+
+SELECT COUNT(*) AS row_count, SUM(amount_cents) AS total_cents
+FROM demo.postgres_orders_demo_public.orders;
+```
+
+**Expected outcome:** Spark still shows Chloe's original 3000-cent, pending order and no Priya order. Its totals remain **15 rows and 120000 cents**. Changing PostgreSQL alone does not update the Iceberg copy in this full-refresh setup.
+
+### Run OLake again
+
+In the PowerShell terminal:
+
+```powershell
+docker compose run --rm olake sync `
+  --config /mnt/config/source.json `
+  --streams /mnt/config/streams.json `
+  --destination /mnt/config/destination.json
+```
+
+**Expected outcome:** OLake completes a full refresh with 16 source records. It reloads the destination from the current PostgreSQL data; this is not a CDC demonstration.
+
+### Refresh Spark and verify the changes
+
+In the Spark SQL session, refresh the table's cached metadata and query again:
+
+```sql
+REFRESH TABLE demo.postgres_orders_demo_public.orders;
+
+SELECT id, customer_name, amount_cents, status
+FROM demo.postgres_orders_demo_public.orders
+WHERE id IN (3, 16)
+ORDER BY id;
+
+SELECT COUNT(*) AS row_count, SUM(amount_cents) AS total_cents
+FROM demo.postgres_orders_demo_public.orders;
+```
+
+Expected changed rows:
+
+```text
+id  customer_name  amount_cents  status
+3   Chloe          3500          paid
+16  Priya          16000         paid
+```
+
+**Expected outcome:** Spark now returns **16 rows and 136500 cents**, matching PostgreSQL. Repeat the complete sorted business-row queries from steps 2 and 7 to confirm every row matches, then capture the updated Spark results for the demo.
 
 ## Gotchas and things to keep in mind
 
