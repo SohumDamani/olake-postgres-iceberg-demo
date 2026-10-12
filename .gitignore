@@ -5,6 +5,7 @@
 
 # Private learning and progress notes
 docs/build-notes.md
+docs/recording-script.md
 
 # Generated OLake configuration, state, and logs
 runtime/

@@ -4,6 +4,12 @@ This tutorial walks through using OLake to discover a PostgreSQL table, copy its
 
 You will create 15 sample orders and verify that Spark returns the same business data as PostgreSQL. The setup runs locally in Docker and uses **full refresh**: the destination is populated when you execute the sync.
 
+## Demo video
+
+[Watch the OLake demo on Loom (4:56)](https://www.loom.com/share/db7e87ff0e684f55a48db49bc338edfa)
+
+The recording explains the architecture, shows OLake discovery and sync, and demonstrates a live source change followed by a full refresh. It starts with 16 orders after the change exercise; the tutorial below starts with the original 15-row dataset.
+
 ## How the pipeline works
 
 ```mermaid
