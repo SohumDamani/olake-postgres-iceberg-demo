@@ -1,0 +1,11 @@
+{
+  "host": "postgres",
+  "port": 5432,
+  "database": "orders_demo",
+  "username": "olake_demo",
+  "password": "REPLACE_WITH_POSTGRES_PASSWORD",
+  "schemas": ["public"],
+  "ssl": {
+    "mode": "disable"
+  }
+}
