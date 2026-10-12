@@ -1,17 +1,25 @@
-15 PostgreSQL orders, copied into Iceberg with OLake.
-Then queried in Spark SQL, with every business row checked against the source.
+I got PostgreSQL data into Iceberg with OLake, then queried it in Spark.
+Watching an updated order and a new one appear after the next sync was pretty satisfying!
 
-I put together a local tutorial for data engineers who want to see how OLake fits into a PostgreSQL-to-Iceberg pipeline.
+If you're new to OLake, it's an open-source ingestion tool that moves source data into Apache Iceberg tables. You configure the source and destination, choose the tables and sync mode, and OLake handles the data transfer.
 
-OLake discovers the source schema and copies the selected table. MinIO stores the Parquet files and Iceberg metadata, while a REST catalog lets Spark find the table.
+I built a tutorial around a small orders table to make that workflow easy to follow. Everything runs locally in Docker, so you can try it without setting up a cloud account.
 
-The walkthrough covers the connection check, schema discovery, and a full-refresh sync. It includes the Docker configuration and the SQL needed to verify the result: 15 matching rows, totaling 120,000 cents.
+Here's the flow:
 
-One detail worth checking before your first sync: discovery selected incremental mode with amount_cents as the cursor. I explicitly switched to full refresh for this snapshot demo. An order amount is not a reliable field for tracking changes.
+PostgreSQL -> OLake -> Iceberg files in MinIO
 
-Seeing the copied rows in Spark made the roles of storage, catalog, and ingestion much clearer. This example uses a complete snapshot; another sync is needed to reflect source changes.
+OLake registers the table through a REST catalog. Spark uses that catalog to find and query the copied data. Iceberg provides the table format; MinIO stores the files.
 
-If you want to try OLake locally, start with the README:
+The initial sync copied 15 orders totaling 120,000 cents. I checked every sorted business row against PostgreSQL, along with the count and total.
+
+Then I updated one order and inserted another. After a second sync, Spark showed both changes: 16 orders totaling 136,500 cents.
+
+This tutorial uses full refresh, so source changes appear after another sync runs. The README walks through that behavior and includes the configuration, Spark queries, and setup gotchas.
+
+One detail to check: discovery selected incremental mode with amount_cents as its cursor. I changed it to full refresh for this example. An order amount isn't a reliable way to track changes.
+
+If you've been curious about OLake or want a concrete introduction to Iceberg ingestion, try the walkthrough:
 https://github.com/SohumDamani/olake-postgres-iceberg-demo
 
-Share it with a teammate exploring Iceberg ingestion. I'd welcome notes on any setup step that needs a clearer explanation.
+Share it with a teammate exploring Iceberg. I'd love to hear which parts helped and where the instructions could be clearer.
