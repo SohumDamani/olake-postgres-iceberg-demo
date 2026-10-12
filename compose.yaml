@@ -18,5 +18,67 @@ services:
       timeout: 5s
       retries: 20
 
+  minio:
+    image: olakego/minio
+    command: server --console-address ":9001" /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+
+  create-bucket:
+    image: olakego/mc
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          if mc alias set local http://minio:9000 \
+            "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; then
+            mc mb --ignore-existing local/warehouse
+            exit 0
+          fi
+          sleep 2
+        done
+        exit 1
+
+  rest:
+    image: tabulario/iceberg-rest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      CATALOG_URI: jdbc:postgresql://postgres:5432/iceberg_catalog
+      CATALOG_JDBC_USER: ${POSTGRES_USER}
+      CATALOG_JDBC_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:8181:8181"
+
+  spark:
+    image: tabulario/spark-iceberg
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
+
 volumes:
   postgres_data:
+  minio_data:
